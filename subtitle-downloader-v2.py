@@ -14,24 +14,24 @@ files = [f for f in os.listdir('.') if os.path.isfile(f)]
 for f in files:
 	if f.endswith('.mkv') or f.endswith('.avi') or f.endswith('.3gp') or f.endswith('.mp4') or f.endswith('.flv') or f.endswith('.wmv') or f.endswith('.mov') or f.endswith('.mpg'):
 		fileName, fileExtension = os.path.splitext(f)
-		
+
 		if fileName+".srt" in files:
 			continue
 
 		query = fileName.replace(".", " ").replace("BluRay","").replace("x264","").replace("YIFY","").replace("1080p","").replace("720p","").replace("BrRip","").replace("BRRip","").replace("AAC-ViSiON","").replace("AAC","").replace("DVDSCR","").replace("SCR","").replace("DVDRIP","").replace("CAMPRIP","").replace("HDTV","")
-		
+
 		user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
-		headers={'User-Agent':user_agent} 
+		headers={'User-Agent':user_agent}
 		url = "https://google.co.in/search?"
 
 		query = ' '.join(query.split())
 
 		query = urllib.urlencode( {'q' : query } )
-	
+
 		request = urllib2.Request(url+query,None,headers)
-		
+
 		try:
-		
+
 			response = urllib2.urlopen(request).read()
 
 		except:
@@ -39,12 +39,13 @@ for f in files:
 
 		download_title = ''
 
-		try:		
-	
+		try:
+
 			soup = BeautifulSoup(response,'html.parser')
 			for child in soup.find_all("h3",attrs={'class':"r"}):
 				title = child.a.get_text()
-				download_title = title
+				if download_title == '':
+					download_title = title
 				if title.endswith('- IMDb'):
 					download_title = title.replace('- IMDb','')
 					break
@@ -61,7 +62,7 @@ for f in files:
 		request = urllib2.Request(url+query,None,headers)
 
 		try:
-		
+
 			response = urllib2.urlopen(request).read()
 		except:
 			continue
@@ -94,9 +95,9 @@ for f in files:
 			q=''
 			if zipfile.is_zipfile('subtitle')==True:
 				zfile = zipfile.ZipFile('subtitle')
-				for z in zfile.namelist():	
+				for z in zfile.namelist():
 					zfile.extract(z,current_path)
-					q=z	
+					q=z
 			else:
 				rf = rarfile.RarFile('subtitle')
 				for f in rf.infolist():
