@@ -18,7 +18,7 @@ for f in files:
 		if fileName+".srt" in files:
 			continue
 
-		query = fileName.replace(".", " ").replace("BluRay","").replace("x264","").replace("YIFY","").replace("1080p","").replace("720p","").replace("BrRip","").replace("BRRip","").replace("AAC-ViSiON","").replace("AAC","").replace("DVDSCR","").replace("SCR","").replace("DVDRIP","").replace("CAMPRIP","").replace("HDTV","").replace("1CD","")
+		query = fileName.replace(".", " ").replace("BluRay","").replace("x264","").replace("YIFY","").replace("1080p","").replace("720p","").replace("aXXo","").replace("XviD","").replace("BDRip","").replace("BrRip","").replace("BRRip","").replace("AAC-ViSiON","").replace("AAC","").replace("DVDSCR","").replace("SCR","").replace("DVDRIP","").replace("CAMPRIP","").replace("HDTV","").replace("1CD","")
 
 		user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
 		headers={'User-Agent':user_agent}
