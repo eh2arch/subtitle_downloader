@@ -104,6 +104,10 @@ for f in files:
 				    rf.extract(f,current_path)
 				    q=f.filename
 			os.rename(q,fileName+'.srt')
-			os.remove('subtitle',current_path)
+			try:
+				os.remove('subtitle',current_path)
+			except OSError as e: # name the Exception `e`
+			    print "Failed with:", e.strerror # look what it says
+			    print "Error code:", e.code
 		except:
 			continue
