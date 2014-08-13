@@ -1,0 +1,9 @@
+('/home/archit/Desktop/subtitle_downloader_v2/dist/subtitle-downloader-v2',
+ True,
+ False,
+ None,
+ None,
+ [],
+ None,
+ False,
+ 1407660428)
