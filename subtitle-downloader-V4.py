@@ -9,7 +9,20 @@ import zipfile
 import rarfile
 import os.path
 import os
+import hashlib
 import urlparse
+
+
+#this hash function receives the name of the file and returns the hash code
+def get_hash(name):
+    readsize = 64 * 1024
+    with open(name, 'rb') as f:
+        size = os.path.getsize(name)
+        data = f.read(readsize)
+        f.seek(-readsize, os.SEEK_END)
+        data += f.read(readsize)
+    return hashlib.md5(data).hexdigest()
+
 
 for root, dirs, files in os.walk(os.getcwd()):
 	for f in files:
@@ -18,11 +31,24 @@ for root, dirs, files in os.walk(os.getcwd()):
 
 			if fileName+".srt" in files:
 				continue
-			
+
 			print "Processing for "+fileName
+
+			user_agent = 'SubDB/1.0 (subtitle_downloader_v2/1.0; https://github.com/eh2arch/subtitle_downloader_v2)'
+			headers={'User-Agent':user_agent}
+			url = 'http://api.thesubdb.com/?action=download&language=en'
+			query_url = urllib.urlencode( {'hash' : get_hash(root+os.sep+f) } )
+			request = urllib2.Request(url+query_url,None,headers)
+			response_whole = urllib2.urlopen(request)
+			response = response_whole.read()
+			if response_whole.getcode() == 200 and len(response) > 0 :
+				sub = open (root+os.sep+fileName + ".srt","wb")
+				sub.write(response)
+				continue
+
 			query = fileName.lower().replace(".", " ").replace("-"," ").replace("_"," ").replace("[", " ").replace("]", " ").replace("bluray","").replace("x264","").replace("yify","").replace("1080p","").replace("720p","").replace("axxo","").replace("xvid","").replace("bdrip","").replace("brrip","").replace("aac-vision","").replace("aac","").replace("dvdscr","").replace("scr","").replace("dvdrip","").replace("camrip","").replace("hdtv","").replace("1cd","").replace("mp3","").replace("audio","").replace("hindi","").replace("dual","").replace("subs","")
 			query = ' '.join(query.split()[0:5])
-			
+
 			user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
 			headers={'User-Agent':user_agent}
 			url = "https://google.co.in/search?"
@@ -92,7 +118,7 @@ for root, dirs, files in os.walk(os.getcwd()):
 			except:
 				print "Failed to get subtitles for movie"
 				continue
-			
+
 			if download_url == '':
 				print "Failed to get subtitles for movie"
 				continue
