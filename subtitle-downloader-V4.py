@@ -34,18 +34,19 @@ for root, dirs, files in os.walk(os.getcwd()):
 
 			print "Processing for "+fileName
 
-			user_agent = 'SubDB/1.0 (subtitle_downloader_v2/1.0; https://github.com/eh2arch/subtitle_downloader_v2)'
-			headers={'User-Agent':user_agent}
-			url = 'http://api.thesubdb.com/?action=download&language=en'
-			query_url = urllib.urlencode( {'hash' : get_hash(root+os.sep+f) } )
-			request = urllib2.Request(url+query_url,None,headers)
-			response_whole = urllib2.urlopen(request)
-			response = response_whole.read()
-			if response_whole.getcode() == 200 and len(response) > 0 :
-				sub = open (root+os.sep+fileName + ".srt","wb")
-				sub.write(response)
-				continue
-
+			try:
+				user_agent = 'SubDB/1.0 (subtitle_downloader_v2/1.0; https://github.com/eh2arch/subtitle_downloader_v2)'
+				headers={'User-Agent':user_agent}
+				url = 'http://api.thesubdb.com/?action=download&language=en'
+				request = urllib2.Request(url+'&hash='+get_hash(root+os.sep+f),None,headers)
+				response_whole = urllib2.urlopen(request)
+				response = response_whole.read()
+				if len(response) > 0 :
+					sub = open (root+os.sep+fileName + ".srt","wb")
+					sub.write(response)
+					continue
+			except:
+				q=2
 			query = fileName.lower().replace(".", " ").replace("-"," ").replace("_"," ").replace("[", " ").replace("]", " ").replace("bluray","").replace("x264","").replace("yify","").replace("1080p","").replace("720p","").replace("axxo","").replace("xvid","").replace("bdrip","").replace("brrip","").replace("aac-vision","").replace("aac","").replace("dvdscr","").replace("scr","").replace("dvdrip","").replace("camrip","").replace("hdtv","").replace("1cd","").replace("mp3","").replace("audio","").replace("hindi","").replace("dual","").replace("subs","")
 			query = ' '.join(query.split()[0:5])
 
@@ -84,6 +85,8 @@ for root, dirs, files in os.walk(os.getcwd()):
 						break
 			except:
 				download_title = query
+
+			download_title = download_title.replace('(film)','')
 
 			query = "\"" + download_title + '\" site:subscene.com'
 
