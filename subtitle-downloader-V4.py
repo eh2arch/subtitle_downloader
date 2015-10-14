@@ -1,4 +1,7 @@
 #! /usr/bin/python
+from multiprocessing.pool import Pool
+from multiprocessing import JoinableQueue as Queue
+import threading
 import urllib2
 import urllib
 import re
@@ -11,9 +14,9 @@ import os.path
 import os
 import hashlib
 import urlparse
+import uuid
 
-
-#this hash function receives the name of the file and returns the hash code
+#This hash function receives the name of the file and returns the hash code
 def get_hash(name):
     readsize = 64 * 1024
     with open(name, 'rb') as f:
@@ -23,55 +26,68 @@ def get_hash(name):
         data += f.read(readsize)
     return hashlib.md5(data).hexdigest()
 
+def explore_path(path):
+	directories = []
+	nondirectories = []
+	for filename in os.listdir(path):
+		fullname = os.path.join(path, filename)
+		if os.path.isdir(fullname):
+			directories.append(fullname)
+		else:
+			if filename.endswith(('.mkv', '.avi', '.3gp', '.mp4', '.flv', '.wmv', '.mov', '.mpg')) and os.path.splitext(filename)[0] + ".srt" not in os.listdir(path):
+				nondirectories.append([filename, path])
+	if nondirectories:
+		map(lambda x: files_to_process.put(x), nondirectories)
+	return directories
 
-for root, dirs, files in os.walk(os.getcwd()):
-	for f in files:
-		if f.endswith('.mkv') or f.endswith('.avi') or f.endswith('.3gp') or f.endswith('.mp4') or f.endswith('.flv') or f.endswith('.wmv') or f.endswith('.mov') or f.endswith('.mpg'):
+def parallel_worker():
+    while True:
+        path = unsearched.get()
+        dirs = explore_path(path)
+        for newdir in dirs:
+            unsearched.put(newdir)
+        unsearched.task_done()
+
+def get_html_response(user_agent, request_url):
+	headers = {'User-Agent':user_agent}
+	return urllib2.urlopen(urllib2.Request(request_url, None, headers)).read()
+
+def do_subtitle_magic(queue):
+	while True:
+		f, path = queue.get()
+		try:
 			fileName, fileExtension = os.path.splitext(f)
-
-			if fileName+".srt" in files:
+			files = os.listdir(path)
+			if fileName + ".srt" in files:
 				continue
-
-			print "Processing for "+fileName
-
+			print "Processing for " + fileName
 			try:
 				user_agent = 'SubDB/1.0 (subtitle_downloader_v2/1.0; https://github.com/eh2arch/subtitle_downloader_v2)'
-				headers={'User-Agent':user_agent}
 				url = 'http://api.thesubdb.com/?action=download&language=en'
-				request = urllib2.Request(url+'&hash='+get_hash(root+os.sep+f),None,headers)
-				response_whole = urllib2.urlopen(request)
-				response = response_whole.read()
+				response = get_html_response(user_agent, url+'&hash='+get_hash(path+os.sep+f))
 				if len(response) > 0 :
-					sub = open (root+os.sep+fileName + ".srt","wb")
+					sub = open (path+os.sep+fileName + ".srt","wb")
 					sub.write(response)
+					print "Subtitles downloaded for " + fileName
 					continue
 			except:
-				q=2
-			query = fileName.lower().replace(".", " ").replace("-"," ").replace("_"," ").replace("[", " ").replace("]", " ").replace("bluray","").replace("x264","").replace("yify","").replace("1080p","").replace("720p","").replace("axxo","").replace("xvid","").replace("bdrip","").replace("brrip","").replace("aac-vision","").replace("aac","").replace("dvdscr","").replace("scr","").replace("dvdrip","").replace("camrip","").replace("hdtv","").replace("1cd","").replace("mp3","").replace("audio","").replace("hindi","").replace("dual","").replace("subs","")
+				pass
+			mapping = [(".", " "), ("-"," "), ("_"," "), ("[", " "), ("]", " "), ("bluray",""), ("x264",""), ("yify",""), ("1080p",""), ("720p",""), ("axxo",""), ("xvid",""), ("bdrip",""), ("brrip",""), ("aac-vision",""), ("aac",""), ("dvdscr",""), ("scr",""), ("dvdrip",""), ("camrip",""), ("hdtv",""), ("1cd",""), ("mp3",""), ("audio",""), ("hindi",""), ("dual",""), ("subs","")]
+			query = fileName.lower()
+			for k, v in mapping:
+				query = query.replace(k, v)
 			query = ' '.join(query.split()[0:5])
-
 			user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7'
-			headers={'User-Agent':user_agent}
 			url = "https://google.co.in/search?"
-
 			query = ' '.join(query.split())
-
 			query_url = urllib.urlencode( {'q' : query } )
-
-			request = urllib2.Request(url+query_url,None,headers)
-
 			try:
-
-				response = urllib2.urlopen(request).read()
-
+				response = get_html_response(user_agent, url + query_url)
 			except:
-				print "Failed to get subtitles for movie"
+				print "Failed to get subtitles for " + fileName
 				continue
-
 			download_title = ''
-
 			try:
-
 				soup = BeautifulSoup(response,'html.parser')
 				for child in soup.find_all("h3",attrs={'class':"r"}):
 					title = child.a.get_text()
@@ -85,24 +101,15 @@ for root, dirs, files in os.walk(os.getcwd()):
 						break
 			except:
 				download_title = query
-
 			download_title = download_title.replace('(film)','')
-
 			query = "\"" + download_title + '\" site:subscene.com'
-
 			query = urllib.urlencode( {'q' : query } )
-
-			request = urllib2.Request(url+query,None,headers)
-
 			try:
-
-				response = urllib2.urlopen(request).read()
+				response = get_html_response(user_agent, url + query)
 			except:
-				print "Failed to get subtitles for movie"
+				print "Failed to get subtitles for " + fileName
 				continue
-
 			download_url = ''
-
 			try:
 				soup = BeautifulSoup(response,'html.parser')
 				for child in soup.find_all("cite"):
@@ -117,39 +124,57 @@ for root, dirs, files in os.walk(os.getcwd()):
 						if (not re.search('\.{3}',movie_link)) and re.search('english\/\d*',movie_link):
 							download_url = movie_link
 							break
-
 			except:
-				print "Failed to get subtitles for movie"
+				print "Failed to get subtitles for " + fileName
 				continue
 
 			if download_url == '':
-				print "Failed to get subtitles for movie"
+				print "Failed to get subtitles for " + fileName
 				continue
-
-
 			try:
-				website=urllib2.urlopen(download_url)
-				html=website.read()
-				soup = BeautifulSoup(html,'html.parser')
+				response=urllib2.urlopen(download_url).read()
+				soup = BeautifulSoup(response,'html.parser')
 				for child in soup.find_all('div',attrs={'class':"download"}):
 					get_url='http://subscene.com'+child.a['href']
 					break
-				urllib.urlretrieve (get_url, "subtitle.rar")
+				unique_filename = str(uuid.uuid4()) + ".rar"
+				urllib.urlretrieve (get_url, unique_filename)
 				current_path = os.getcwd()
 				q=''
-				if zipfile.is_zipfile('subtitle.rar')==True:
-					zfile = zipfile.ZipFile('subtitle.rar')
+				if zipfile.is_zipfile(unique_filename)==True:
+					zfile = zipfile.ZipFile(unique_filename)
 					for z in zfile.namelist():
-						zfile.extract(z,root)
+						zfile.extract(z,path)
 						q=z
 				else:
-					rf = rarfile.RarFile('subtitle.rar')
+					rf = rarfile.RarFile(unique_filename)
 					for f in rf.infolist():
-						rf.extract(f,root)
+						rf.extract(f,path)
 						q=f.filename
-				os.rename(root+os.sep+q,root+os.sep+fileName+'.srt')
-				os.remove('subtitle.rar',current_path)
+				os.rename(path+os.sep+q,path+os.sep+fileName+'.srt')
+				print "Subtitles downloaded for " + fileName
+				try:
+					os.remove(current_path + os.sep + unique_filename)
+				except:
+					pass
 			except:
 				continue
-			print "Subtitles downloaded and renamed."
-print "Enjoy!"
+		finally:
+			queue.task_done()
+
+if __name__ == "__main__":
+	path = os.getcwd()
+	unsearched = Queue()
+	files_to_process = Queue(maxsize=0)
+	unsearched.put(path)
+	pool = Pool(5)
+	for i in range(5):
+	    pool.apply_async(parallel_worker)
+	num_threads = 10
+	for i in range(num_threads):
+		worker = threading.Thread(target=do_subtitle_magic, args=(files_to_process,))
+		worker.setDaemon(True)
+		worker.start()
+	unsearched.join()
+	files_to_process.join()
+	print "Enjoy!"
