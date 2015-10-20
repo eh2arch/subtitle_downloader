@@ -15,6 +15,7 @@ import os
 import hashlib
 import urlparse
 import uuid
+import sys
 
 #This hash function receives the name of the file and returns the hash code
 def get_hash(name):
@@ -163,10 +164,13 @@ def do_subtitle_magic(queue):
 			queue.task_done()
 
 if __name__ == "__main__":
-	path = os.getcwd()
+	if len(sys.argv) == 1:
+		paths = [os.getcwd()]
+	else:
+		paths = sys.argv[1:]
 	unsearched = Queue()
 	files_to_process = Queue(maxsize=0)
-	unsearched.put(path)
+	map(lambda x: unsearched.put(x), paths)
 	pool = Pool(5)
 	for i in range(5):
 	    pool.apply_async(parallel_worker)
